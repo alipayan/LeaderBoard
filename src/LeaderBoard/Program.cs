@@ -1,13 +1,16 @@
+using LeaderBoard.Database;
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.BrokerConfig();
+builder.ApplicationDbContextConfig();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
 	app.UseSwagger();
@@ -16,29 +19,72 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
+app.MapGet("/{topic}", (string Topic, int count, LeaderBoardDbContext dbContext) =>
 {
-	"Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+	if (Topic == "order")
+	{
+		var items = dbContext.MostSoldProducts.OrderByDescending(d => d.Score)
+											  .Take(count);
+		return Results.Ok(items);
+	}
+	else if (Topic == "game")
+	{
+		var items = dbContext.PlayerScores.OrderByDescending(d => d.Score)
+											  .Take(count);
+		return Results.Ok(items);
+	}
+	throw new InvalidOperationException();
+});
 
-app.MapGet("/weatherforecast", () =>
+app.MapPost("/game", async (string player, int score, IPublishEndpoint endpoint) =>
 {
-	var forecast = Enumerable.Range(1, 5).Select(index =>
-		new WeatherForecast
-		(
-			DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-			Random.Shared.Next(-20, 55),
-			summaries[Random.Shared.Next(summaries.Length)]
-		))
-		.ToArray();
-	return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
+	var topic = "game";
+
+	await endpoint.Publish(new PlayerScoreChangedEvent(player, score));
+
+});
+
+app.MapPost("/ordering", async (string catalog_id, IPublishEndpoint endpoint) =>
+{
+	var topic = "order";
+	await endpoint.Publish(new SoldProductEvent(catalog_id));
+
+});
 
 app.Run();
 
-internal record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+public static class WebApplicationExtensions
 {
-	public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+	public static void BrokerConfig(this IHostApplicationBuilder builder)
+	{
+		builder.Services.AddMassTransit(configure =>
+		{
+			var brokerConfig = builder.Configuration.GetSection(BrokerOptions.SectionName)
+													.Get<BrokerOptions>();
+			if (brokerConfig is null)
+			{
+				throw new ArgumentNullException(nameof(BrokerOptions));
+			}
+
+			configure.AddConsumers(Assembly.GetExecutingAssembly());
+			configure.UsingRabbitMq((context, cfg) =>
+			{
+				cfg.Host(brokerConfig.Host, hostConfigure =>
+				{
+					hostConfigure.Username(brokerConfig.Username);
+					hostConfigure.Password(brokerConfig.Password);
+				});
+
+				cfg.ConfigureEndpoints(context);
+			});
+		});
+	}
+
+	public static void ApplicationDbContextConfig(this WebApplicationBuilder builder)
+	{
+		builder.Services.AddDbContext<LeaderBoardDbContext>(configure =>
+		{
+			configure.UseInMemoryDatabase(nameof(LeaderBoardDbContext));
+		});
+	}
 }
