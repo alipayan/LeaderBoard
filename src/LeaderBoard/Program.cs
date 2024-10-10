@@ -1,6 +1,4 @@
-using LeaderBoard.Database;
-using Microsoft.EntityFrameworkCore;
-using StackExchange.Redis;
+using LeaderBoard.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +8,7 @@ builder.RedisConfig();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<SortedInMemoryDatabase>();
+builder.Services.AddScoped<ScoreService>();
 
 var app = builder.Build();
 
@@ -21,7 +20,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.MapGet("/{topic}", (string Topic, int count, LeaderBoardDbContext dbContext) =>
+//to get from in memory data base 
+app.MapGet("/{topic}/in-memory", (string Topic, int count, LeaderBoardDbContext dbContext) =>
 {
 	if (Topic == "order")
 	{
@@ -38,6 +38,7 @@ app.MapGet("/{topic}", (string Topic, int count, LeaderBoardDbContext dbContext)
 	throw new InvalidOperationException();
 });
 
+//to get from sortedset in memory data base 
 app.MapGet("/{topic}/sorted-set", (string Topic, int count, SortedInMemoryDatabase sortedDatabase) =>
 {
 	if (Topic == "order")
@@ -51,20 +52,27 @@ app.MapGet("/{topic}/sorted-set", (string Topic, int count, SortedInMemoryDataba
 	throw new InvalidOperationException();
 });
 
-app.MapPost("/game", async (string player, int score, IPublishEndpoint endpoint) =>
+//to get from redis
+app.MapGet("/{topic}", async (int K, string topic, ScoreService scoreService) =>
 {
-	var topic = "game";
-
-	await endpoint.Publish(new PlayerScoreChangedEvent(player, score));
-
+	var items = await scoreService.GetTopAsync<MostSoldProduct>(topic, K);
+	return Results.Ok(items);
 });
+
+//to get from redis
+app.MapGet("/{topic}/game", async (int K, string topic, ScoreService scoreService) =>
+{
+	var items = await scoreService.GetTopAsync<PlayerScore>(topic, K);
+	return Results.Ok(items);
+});
+
+app.MapPost("/game", async (string player, int score, IPublishEndpoint endpoint) =>
+	await endpoint.Publish(new PlayerScoreChangedEvent(player, score))
+);
 
 app.MapPost("/ordering", async (string catalog_id, IPublishEndpoint endpoint) =>
-{
-	var topic = "order";
-	await endpoint.Publish(new SoldProductEvent(catalog_id));
-
-});
+	await endpoint.Publish(new SoldProductEvent(catalog_id))
+);
 
 app.Run();
 

@@ -1,9 +1,8 @@
 ﻿namespace LeaderBoard.Models;
 
-public class BaseScoreType
+public abstract class BaseScoreType
 {
 	public int Score { get; set; }
-
 }
 
 public class BaseScoreTypeComparer : IComparer<BaseScoreType>
