@@ -48,7 +48,7 @@ public static class SrotedSetEntryExtension
 			var attribute = Attribute.GetCustomAttribute(property, typeof(ElementAttribute));
 			if (attribute is not null)
 			{
-				property.SetValue(model, entry.Element);
+				property.SetValue(model, entry.Element.ToString());
 			}
 		}
 
