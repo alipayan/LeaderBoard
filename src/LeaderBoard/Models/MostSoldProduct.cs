@@ -1,4 +1,6 @@
-﻿namespace LeaderBoard.Models;
+﻿using LeaderBoard.Attributes;
+
+namespace LeaderBoard.Models;
 
 public class MostSoldProduct : BaseScoreType
 {
@@ -7,6 +9,7 @@ public class MostSoldProduct : BaseScoreType
 
 	public const string RedisKey = "MostSold";
 
+	[Element]
 	public string CatalogId { get; set; } = null!;
 
 }

@@ -51,14 +51,6 @@ public static class SrotedSetEntryExtension
 				property.SetValue(model, entry.Element.ToString());
 			}
 		}
-
-		//var projections = items.Select(x => new MostSoldProduct
-		//{
-		//	CatalogId = x.Element.ToString(),
-		//	Score = Convert.ToInt32(x.Score)
-		//}).ToList();
-
-		//return (IEnumerable<T>)projections; 
-		return entry.ToModel<T>();
+		return model;
 	}
 }
