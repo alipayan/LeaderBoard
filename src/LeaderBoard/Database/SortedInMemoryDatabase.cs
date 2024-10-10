@@ -6,8 +6,8 @@ public class SortedInMemoryDatabase
 {
 	private Dictionary<string, SortedSet<Type>> _sets;
 
-	private SortedSet<PlayerScore> playerScores = new SortedSet<PlayerScore>();
-	private SortedSet<MostSoldProduct> mostSoldProducts = new SortedSet<MostSoldProduct>();
+	private SortedSet<PlayerScore> playerScores = new SortedSet<PlayerScore>(new BaseScoreTypeComparer());
+	private SortedSet<MostSoldProduct> mostSoldProducts = new SortedSet<MostSoldProduct>(new BaseScoreTypeComparer());
 
 	public SortedSet<PlayerScore> PlayerScores => playerScores;
 	public SortedSet<MostSoldProduct> MostSoldProducts => mostSoldProducts;
@@ -26,4 +26,9 @@ public class SortedInMemoryDatabase
 		}
 	}
 
+
+	public void Update<TModel>(TModel model) where TModel : BaseScoreType
+	{
+
+	}
 }
