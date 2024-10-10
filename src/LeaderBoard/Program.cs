@@ -7,6 +7,7 @@ builder.BrokerConfig();
 builder.ApplicationDbContextConfig();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddSingleton<SortedInMemoryDatabase>();
 
 
 var app = builder.Build();
@@ -32,6 +33,19 @@ app.MapGet("/{topic}", (string Topic, int count, LeaderBoardDbContext dbContext)
 		var items = dbContext.PlayerScores.OrderByDescending(d => d.Score)
 											  .Take(count);
 		return Results.Ok(items);
+	}
+	throw new InvalidOperationException();
+});
+
+app.MapGet("/{topic}/sorted-set", (string Topic, int count, SortedInMemoryDatabase sortedDatabase) =>
+{
+	if (Topic == "order")
+	{
+		return Results.Ok(sortedDatabase.MostSoldProducts);
+	}
+	else if (Topic == "game")
+	{
+		return Results.Ok(sortedDatabase.PlayerScores);
 	}
 	throw new InvalidOperationException();
 });
