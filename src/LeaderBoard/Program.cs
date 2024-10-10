@@ -1,10 +1,12 @@
 using LeaderBoard.Database;
 using Microsoft.EntityFrameworkCore;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.BrokerConfig();
 builder.ApplicationDbContextConfig();
+builder.RedisConfig();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<SortedInMemoryDatabase>();
@@ -98,6 +100,17 @@ public static class WebApplicationExtensions
 		builder.Services.AddDbContext<LeaderBoardDbContext>(configure =>
 		{
 			configure.UseInMemoryDatabase(nameof(LeaderBoardDbContext));
+		});
+	}
+
+	public static void RedisConfig(this WebApplicationBuilder builder)
+	{
+		builder.Services.AddSingleton<IConnectionMultiplexer>(PathString =>
+		{
+			var connectionString = builder.Configuration.GetConnectionString("RedisConnections");
+			if (connectionString is null)
+				throw new ArgumentNullException(nameof(connectionString));
+			return ConnectionMultiplexer.Connect(connectionString);
 		});
 	}
 }
